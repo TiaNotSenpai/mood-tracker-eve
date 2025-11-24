@@ -3,106 +3,128 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Mood Check</title>
-    <!-- Carichiamo la libreria Telegram -->
+    <title>Status</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
-            font-family: sans-serif;
-            background-color: #f5f5f7;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px;
+            font-family: -apple-system, sans-serif;
+            background-color: var(--tg-theme-bg-color, #f5f5f7);
+            color: var(--tg-theme-text-color, #000);
+            display: flex; flex-direction: column; align-items: center;
+            padding: 20px; margin: 0; box-sizing: border-box;
         }
         .card {
-            background: #fff;
-            border-radius: 16px;
-            padding: 20px;
-            width: 100%;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            background: var(--tg-theme-secondary-bg-color, #fff);
+            border-radius: 16px; padding: 20px; width: 100%;
+            margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            box-sizing: border-box;
         }
-        .emoji-btn { font-size: 35px; background: none; border: none; cursor: pointer; opacity: 0.3; }
-        .emoji-btn.selected { opacity: 1; transform: scale(1.2); }
+        h3 { margin-top: 0; font-size: 16px; opacity: 0.7; text-align: center; }
         
-        #send-btn {
-            background-color: #3390ec; color: #fff;
-            width: 100%; padding: 15px;
-            border: none; border-radius: 12px;
-            font-size: 16px; font-weight: bold;
-            margin-top: 20px;
+        .emoji-row { display: flex; justify-content: space-around; margin-bottom: 10px; }
+        .emoji-btn {
+            font-size: 38px; background: transparent; border: none;
+            opacity: 0.4; transition: all 0.2s; cursor: pointer; padding: 5px;
         }
+        .emoji-btn.selected { opacity: 1; transform: scale(1.25); filter: drop-shadow(0 0 5px rgba(0,0,0,0.2)); }
+
+        .toggle-row {
+            display: flex; background: rgba(0,0,0,0.05);
+            border-radius: 10px; padding: 4px; margin-bottom: 12px;
+        }
+        .toggle-opt {
+            flex: 1; text-align: center; padding: 10px; font-size: 13px;
+            border-radius: 8px; cursor: pointer; font-weight: 500;
+        }
+        .toggle-opt.active {
+            background: var(--tg-theme-button-color, #3390ec);
+            color: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        #send-btn {
+            width: 100%; padding: 16px; border: none; border-radius: 12px;
+            background-color: var(--tg-theme-button-color, #3390ec);
+            color: #fff; font-size: 17px; font-weight: bold;
+            opacity: 0.5; pointer-events: none; transition: opacity 0.3s;
+        }
+        #send-btn.ready { opacity: 1; pointer-events: all; cursor: pointer; }
     </style>
 </head>
 <body>
 
+    <!-- STATO -->
     <div class="card">
-        <h3 style="text-align:center">Test Diagnostico</h3>
-        <div style="display:flex; justify-content:space-around">
-            <button class="emoji-btn" onclick="selectEmoji('🟢', this)">🟢</button>
-            <button class="emoji-btn" onclick="selectEmoji('🟡', this)">🟡</button>
-            <button class="emoji-btn" onclick="selectEmoji('🔵', this)">🔵</button>
+        <h3>Come stai?</h3>
+        <div class="emoji-row">
+            <button class="emoji-btn" onclick="setEmoji('🟢')">🟢</button>
+            <button class="emoji-btn" onclick="setEmoji('🟡')">🟡</button>
+            <button class="emoji-btn" onclick="setEmoji('🔵')">🔵</button>
         </div>
-        <p id="debug-text" style="text-align:center; color:red; font-size:12px; margin-top:10px;">Attesa azione...</p>
+        <p id="status-desc" style="text-align:center; min-height:20px; font-size:14px; margin:0;"></p>
     </div>
 
-    <button id="send-btn" onclick="trySend()">INVIA (TEST)</button>
+    <!-- DETTAGLI -->
+    <div class="card">
+        <h3>Contesto (Opzionale)</h3>
+        <div class="toggle-row" id="cause">
+            <div class="toggle-opt" onclick="setOpt('cause', 'Voi due', this)">Noi due</div>
+            <div class="toggle-opt" onclick="setOpt('cause', 'Esterno', this)">Esterno</div>
+        </div>
+        <div class="toggle-row" id="contact">
+            <div class="toggle-opt" onclick="setOpt('contact', 'Lasciami sola', this)">Lasciami sola</div>
+            <div class="toggle-opt" onclick="setOpt('contact', 'Scrivimi', this)">Scrivimi</div>
+        </div>
+        <div class="toggle-row" id="severity">
+            <div class="toggle-opt" onclick="setOpt('severity', 'Grave', this)">Grave</div>
+            <div class="toggle-opt" onclick="setOpt('severity', 'Gestibile', this)">Gestibile</div>
+        </div>
+    </div>
+
+    <button id="send-btn" onclick="sendToTelegram()">INVIA A LUI</button>
 
     <script>
-        // 1. Diciamo al browser di urlare se c'è un errore
-        window.onerror = function(msg, url, line) {
-            alert("ERRORE DI SISTEMA:\n" + msg + "\nRiga: " + line);
-            document.getElementById('debug-text').innerText = "ERRORE: " + msg;
-        };
+        // --- MODIFICA SOLO QUI SOTTO ---
+        const BOT_TOKEN = "8423305789:AAH1AJaHbzgOdt9mCJE9pV3NNA25f7t5EaA"; 
+        const CHAT_ID_FIDANZATO = "834109794";
+        // -------------------------------
 
-        const tg = window.Telegram.WebApp;
+        let tg = window.Telegram.WebApp;
         tg.expand();
-        
-        // Verifica immediata che Telegram ci sia
-        if (!tg) {
-            alert("ATTENZIONE: Non vedo Telegram. Sei sul browser normale?");
-        } else {
-            // alert("Telegram connesso correttamente v" + tg.version); // Decommenta se serve
-        }
 
-        let selectedStatus = null;
+        let payload = { status: null, cause: "-", contact: "-", severity: "-" };
 
-        function selectEmoji(emoji, btn) {
+        function setEmoji(e) {
             document.querySelectorAll('.emoji-btn').forEach(b => b.classList.remove('selected'));
-            btn.classList.add('selected');
-            selectedStatus = emoji;
-            document.getElementById('debug-text').innerText = "Selezionato: " + emoji;
+            event.target.classList.add('selected');
+            payload.status = e;
+            
+            let txt = e === '🟢' ? "Tutto ok" : e === '🟡' ? "Sto elaborando" : "Ho bisogno di spazio";
+            document.getElementById('status-desc').innerText = txt;
+            document.getElementById('send-btn').classList.add('ready');
         }
 
-        function trySend() {
-            // STEP 1: Il click funziona?
-            alert("Step 1: Click ricevuto.");
+        function setOpt(key, val, el) {
+            el.parentNode.querySelectorAll('.toggle-opt').forEach(b => b.classList.remove('active'));
+            el.classList.add('active');
+            payload[key] = val;
+        }
 
-            if (!selectedStatus) {
-                alert("Seleziona prima un'emoji!");
-                return;
-            }
+        function sendToTelegram() {
+            // Messaggio che riceverai TU
+            const textForYou = `🚨 **AGGIORNAMENTO**\n\nStato: ${payload.status}\n----------------\n❓ Causa: ${payload.cause}\n💬 Contatto: ${payload.contact}\n⚠️ Livello: ${payload.severity}`;
+            
+            // Messaggio di conferma per LEI
+            const textForHer = "Ricevuto. Ti voglio bene ❤️";
 
-            // Dati finti per il test
-            const data = {
-                status: selectedStatus,
-                cause: "Test",
-                contact: "Test",
-                severity: "Test"
-            };
+            // 1. Invia messaggio a TE (tramite API diretta, no server!)
+            fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ chat_id: CHAT_ID_FIDANZATO, text: textForYou, parse_mode: 'Markdown' })
+            });
 
-            // STEP 2: Invio dati
-            try {
-                alert("Step 2: Provo a inviare a Telegram...");
-                tg.sendData(JSON.stringify(data));
-                
-                // Se arrivi qui, il comando è partito
-                alert("Step 3: Comando inviato! La finestra dovrebbe chiudersi.");
-                
-            } catch (e) {
-                alert("ERRORE DURANTE L'INVIO: " + e.message);
-            }
+            // 2. Chiudi la webapp (Telegram gestirà la chiusura)
+            tg.close();
         }
     </script>
 </body>
