@@ -83,10 +83,10 @@
     <button id="send-btn" onclick="sendToTelegram()">INVIA A LUI</button>
 
     <script>
-        // --- MODIFICA SOLO QUI SOTTO ---
+        // --- ⚠️ RIMETTI I TUOI DATI QUI ⚠️ ---
         const BOT_TOKEN = "8423305789:AAH1AJaHbzgOdt9mCJE9pV3NNA25f7t5EaA"; 
         const CHAT_ID_FIDANZATO = "834109794";
-        // -------------------------------
+        // -------------------------------------
 
         let tg = window.Telegram.WebApp;
         tg.expand();
@@ -110,21 +110,45 @@
         }
 
         function sendToTelegram() {
-            // Messaggio che riceverai TU
-            const textForYou = `🚨 **AGGIORNAMENTO**\n\nStato: ${payload.status}\n----------------\n❓ Causa: ${payload.cause}\n💬 Contatto: ${payload.contact}\n⚠️ Livello: ${payload.severity}`;
-            
-            // Messaggio di conferma per LEI
-            const textForHer = "Ricevuto. Ti voglio bene ❤️";
+            // Controlla che i dati siano stati inseriti
+            if (BOT_TOKEN.includes("INCOLLA") || CHAT_ID_FIDANZATO.includes("INCOLLA")) {
+                alert("ERRORE: Non hai modificato il Token o l'ID nel codice!");
+                return;
+            }
 
-            // 1. Invia messaggio a TE (tramite API diretta, no server!)
-            fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+            const btn = document.getElementById('send-btn');
+            btn.innerText = "Invio in corso..."; // Feedback visivo
+            btn.style.opacity = "0.7";
+
+            const textForYou = `🚨 **AGGIORNAMENTO**\n\nStato: ${payload.status}\n----------------\n❓ Causa: ${payload.cause}\n💬 Contatto: ${payload.contact}\n⚠️ Livello: ${payload.severity}`;
+
+            // URL per inviare il messaggio
+            const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+
+            fetch(url, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ chat_id: CHAT_ID_FIDANZATO, text: textForYou, parse_mode: 'Markdown' })
+                body: JSON.stringify({ 
+                    chat_id: CHAT_ID_FIDANZATO, 
+                    text: textForYou, 
+                    parse_mode: 'Markdown' 
+                })
+            })
+            .then(response => {
+                if (response.ok) {
+                    // SE è andato tutto bene, ORA chiudiamo
+                    tg.close();
+                } else {
+                    // Se Telegram dice no (es. ID sbagliato)
+                    alert("Errore Telegram: " + response.status);
+                    btn.innerText = "Riprova";
+                }
+            })
+            .catch(error => {
+                // Se manca internet o altro
+                alert("Errore di connessione: " + error);
+                btn.innerText = "Riprova";
             });
-
-            // 2. Chiudi la webapp (Telegram gestirà la chiusura)
-            tg.close();
         }
     </script>
 </body>
