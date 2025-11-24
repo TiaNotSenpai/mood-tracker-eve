@@ -4,184 +4,106 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Mood Check</title>
+    <!-- Carichiamo la libreria Telegram -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--tg-theme-bg-color, #f5f5f7);
-            color: var(--tg-theme-text-color, #000);
+            font-family: sans-serif;
+            background-color: #f5f5f7;
             display: flex;
             flex-direction: column;
             align-items: center;
             padding: 20px;
-            margin: 0;
-            box-sizing: border-box;
         }
-
         .card {
-            background: var(--tg-theme-secondary-bg-color, #ffffff);
+            background: #fff;
             border-radius: 16px;
             padding: 20px;
             width: 100%;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
             margin-bottom: 20px;
-            box-sizing: border-box;
-        }
-
-        h3 { margin-top: 0; font-size: 16px; opacity: 0.7; text-align: center;}
-
-        /* EMOJI */
-        .emoji-container {
-            display: flex;
-            justify-content: space-around;
-            margin-bottom: 10px;
-        }
-        .emoji-btn {
-            font-size: 35px;
-            background: none;
-            border: 2px solid transparent;
-            border-radius: 50%;
-            cursor: pointer;
-            transition: transform 0.2s;
-            opacity: 0.5;
-            padding: 5px;
-        }
-        .emoji-btn.selected {
-            transform: scale(1.2);
-            opacity: 1;
-            border-color: var(--tg-theme-button-color, #3390ec);
-            background-color: rgba(0,0,0,0.03);
-        }
-
-        /* TOGGLES */
-        .toggle-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            background: rgba(0,0,0,0.05);
-            padding: 4px;
-            border-radius: 10px;
-        }
-        
-        .toggle-option {
-            flex: 1;
-            text-align: center;
-            padding: 10px 5px;
-            font-size: 13px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-weight: 500;
-        }
-        
-        .toggle-option.active {
-            background: var(--tg-theme-button-color, #3390ec);
-            color: var(--tg-theme-button-text-color, #fff);
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
-
-        /* IL NUOVO TASTONE */
-        #send-btn {
-            background-color: var(--tg-theme-button-color, #3390ec);
-            color: var(--tg-theme-button-text-color, #ffffff);
-            width: 100%;
-            padding: 15px;
-            border: none;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            opacity: 0.5; /* Spento all'inizio */
-            pointer-events: none; /* Non cliccabile all'inizio */
-            transition: opacity 0.3s;
-            margin-bottom: 20px;
-        }
+        .emoji-btn { font-size: 35px; background: none; border: none; cursor: pointer; opacity: 0.3; }
+        .emoji-btn.selected { opacity: 1; transform: scale(1.2); }
         
-        #send-btn.ready {
-            opacity: 1;
-            pointer-events: all;
+        #send-btn {
+            background-color: #3390ec; color: #fff;
+            width: 100%; padding: 15px;
+            border: none; border-radius: 12px;
+            font-size: 16px; font-weight: bold;
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
 
-    <!-- CARD 1 -->
     <div class="card">
-        <h3>Come stai?</h3>
-        <div class="emoji-container">
+        <h3 style="text-align:center">Test Diagnostico</h3>
+        <div style="display:flex; justify-content:space-around">
             <button class="emoji-btn" onclick="selectEmoji('🟢', this)">🟢</button>
             <button class="emoji-btn" onclick="selectEmoji('🟡', this)">🟡</button>
             <button class="emoji-btn" onclick="selectEmoji('🔵', this)">🔵</button>
         </div>
-        <p id="status-text" style="text-align: center; font-size: 14px; min-height: 20px; margin:0;"></p>
+        <p id="debug-text" style="text-align:center; color:red; font-size:12px; margin-top:10px;">Attesa azione...</p>
     </div>
 
-    <!-- CARD 2 -->
-    <div class="card">
-        <h3>Dettagli (Opzionale)</h3>
-        
-        <div class="toggle-row" id="row-cause">
-            <div class="toggle-option" onclick="selectToggle('row-cause', 'Voi due')">Noi due</div>
-            <div class="toggle-option" onclick="selectToggle('row-cause', 'Esterno')">Esterno</div>
-        </div>
-
-        <div class="toggle-row" id="row-contact">
-            <div class="toggle-option" onclick="selectToggle('row-contact', 'Lasciami sola')">Lasciami sola</div>
-            <div class="toggle-option" onclick="selectToggle('row-contact', 'Scrivimi pure')">Scrivimi pure</div>
-        </div>
-
-        <div class="toggle-row" id="row-severity">
-            <div class="toggle-option" onclick="selectToggle('row-severity', 'Grave')">Grave</div>
-            <div class="toggle-option" onclick="selectToggle('row-severity', 'Gestibile')">Gestibile</div>
-        </div>
-    </div>
-
-    <!-- TASTO INVIO DIRETTO -->
-    <button id="send-btn" onclick="sendData()">INVIA SEGNALE</button>
+    <button id="send-btn" onclick="trySend()">INVIA (TEST)</button>
 
     <script>
-        let tg = window.Telegram.WebApp;
-        tg.expand(); 
-
-        let data = {
-            status: null,
-            cause: "Non specificato",
-            contact: "Non specificato",
-            severity: "Non specificato"
+        // 1. Diciamo al browser di urlare se c'è un errore
+        window.onerror = function(msg, url, line) {
+            alert("ERRORE DI SISTEMA:\n" + msg + "\nRiga: " + line);
+            document.getElementById('debug-text').innerText = "ERRORE: " + msg;
         };
 
-        function selectEmoji(emoji, elem) {
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        
+        // Verifica immediata che Telegram ci sia
+        if (!tg) {
+            alert("ATTENZIONE: Non vedo Telegram. Sei sul browser normale?");
+        } else {
+            // alert("Telegram connesso correttamente v" + tg.version); // Decommenta se serve
+        }
+
+        let selectedStatus = null;
+
+        function selectEmoji(emoji, btn) {
             document.querySelectorAll('.emoji-btn').forEach(b => b.classList.remove('selected'));
-            elem.classList.add('selected');
-            data.status = emoji;
-            
-            let text = "";
-            if(emoji === '🟢') text = "Tutto ok";
-            if(emoji === '🟡') text = "Sto elaborando";
-            if(emoji === '🔵') text = "Ho bisogno di spazio";
-            document.getElementById('status-text').innerText = text;
-            
-            // Attiva il bottone invio
-            let btn = document.getElementById('send-btn');
-            btn.classList.add('ready');
+            btn.classList.add('selected');
+            selectedStatus = emoji;
+            document.getElementById('debug-text').innerText = "Selezionato: " + emoji;
         }
 
-        function selectToggle(rowId, value) {
-            let row = document.getElementById(rowId);
-            row.querySelectorAll('.toggle-option').forEach(opt => opt.classList.remove('active'));
-            event.target.classList.add('active');
-            
-            if (rowId === 'row-cause') data.cause = value;
-            if (rowId === 'row-contact') data.contact = value;
-            if (rowId === 'row-severity') data.severity = value;
-        }
+        function trySend() {
+            // STEP 1: Il click funziona?
+            alert("Step 1: Click ricevuto.");
 
-        function sendData() {
-            if (!data.status) return; // Sicurezza extra
-            tg.sendData(JSON.stringify(data));
-        }
+            if (!selectedStatus) {
+                alert("Seleziona prima un'emoji!");
+                return;
+            }
 
+            // Dati finti per il test
+            const data = {
+                status: selectedStatus,
+                cause: "Test",
+                contact: "Test",
+                severity: "Test"
+            };
+
+            // STEP 2: Invio dati
+            try {
+                alert("Step 2: Provo a inviare a Telegram...");
+                tg.sendData(JSON.stringify(data));
+                
+                // Se arrivi qui, il comando è partito
+                alert("Step 3: Comando inviato! La finestra dovrebbe chiudersi.");
+                
+            } catch (e) {
+                alert("ERRORE DURANTE L'INVIO: " + e.message);
+            }
+        }
     </script>
 </body>
 </html>
