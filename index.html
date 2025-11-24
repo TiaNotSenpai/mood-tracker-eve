@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Mood Check</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--tg-theme-bg-color, #f5f5f7);
+            color: var(--tg-theme-text-color, #000);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+        }
+
+        .card {
+            background: var(--tg-theme-secondary-bg-color, #ffffff);
+            border-radius: 16px;
+            padding: 20px;
+            width: 100%;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+
+        h3 { margin-top: 0; font-size: 16px; opacity: 0.7; text-align: center;}
+
+        /* SEZIONE 1: EMOJI */
+        .emoji-container {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 10px;
+        }
+        .emoji-btn {
+            font-size: 40px;
+            background: none;
+            border: 2px solid transparent;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.2s;
+            opacity: 0.5;
+        }
+        .emoji-btn.selected {
+            transform: scale(1.2);
+            opacity: 1;
+            border-color: var(--tg-theme-button-color, #3390ec);
+        }
+
+        /* SEZIONE 2: TOGGLES (Minimo Sindacale) */
+        .toggle-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            background: rgba(0,0,0,0.05);
+            padding: 4px;
+            border-radius: 10px;
+        }
+        
+        .toggle-option {
+            flex: 1;
+            text-align: center;
+            padding: 10px 5px;
+            font-size: 13px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        
+        .toggle-option.active {
+            background: var(--tg-theme-button-color, #3390ec);
+            color: var(--tg-theme-button-text-color, #fff);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        #mainButton {
+            display: none; /* Gestito da Telegram */
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SEGNALE DI STATO -->
+    <div class="card">
+        <h3>Come stai? (Segnale)</h3>
+        <div class="emoji-container">
+            <button class="emoji-btn" onclick="selectEmoji('🟢', this)" title="Tutto ok">🟢</button>
+            <button class="emoji-btn" onclick="selectEmoji('🟡', this)" title="Sto elaborando">🟡</button>
+            <button class="emoji-btn" onclick="selectEmoji('🔵', this)" title="Ho bisogno di spazio">🔵</button>
+        </div>
+        <p id="status-text" style="text-align: center; font-size: 14px; min-height: 20px;"></p>
+    </div>
+
+    <!-- MINIMO SINDACALE -->
+    <div class="card">
+        <h3>Minimo Sindacale</h3>
+        
+        <!-- Causa -->
+        <div class="toggle-row" id="row-cause">
+            <div class="toggle-option" onclick="selectToggle('row-cause', 'Voi due')">Noi due</div>
+            <div class="toggle-option" onclick="selectToggle('row-cause', 'Esterno')">Esterno</div>
+        </div>
+
+        <!-- Contatto -->
+        <div class="toggle-row" id="row-contact">
+            <div class="toggle-option" onclick="selectToggle('row-contact', 'Lasciami sola')">Lasciami sola</div>
+            <div class="toggle-option" onclick="selectToggle('row-contact', 'Scrivimi pure')">Scrivimi pure</div>
+        </div>
+
+        <!-- Gravità -->
+        <div class="toggle-row" id="row-severity">
+            <div class="toggle-option" onclick="selectToggle('row-severity', 'Grave')">Grave</div>
+            <div class="toggle-option" onclick="selectToggle('row-severity', 'Gestibile')">Gestibile</div>
+        </div>
+    </div>
+
+    <script>
+        let tg = window.Telegram.WebApp;
+        tg.expand(); // Espande l'app a tutto schermo
+
+        let data = {
+            status: null,
+            cause: null,
+            contact: null,
+            severity: null
+        };
+
+        let mainButton = tg.MainButton;
+        mainButton.text = "INVIA STATUS";
+        
+        function updateMainButton() {
+            // Il bottone appare solo se ha selezionato almeno l'emoji
+            if (data.status) {
+                mainButton.show();
+            } else {
+                mainButton.hide();
+            }
+        }
+
+        function selectEmoji(emoji, elem) {
+            document.querySelectorAll('.emoji-btn').forEach(b => b.classList.remove('selected'));
+            elem.classList.add('selected');
+            data.status = emoji;
+            
+            let text = "";
+            if(emoji === '🟢') text = "Tutto ok";
+            if(emoji === '🟡') text = "Sto elaborando qualcosa";
+            if(emoji === '🔵') text = "Ho bisogno di spazio";
+            document.getElementById('status-text').innerText = text;
+            
+            updateMainButton();
+        }
+
+        function selectToggle(rowId, value) {
+            let row = document.getElementById(rowId);
+            // Rimuovi active dagli altri
+            row.querySelectorAll('.toggle-option').forEach(opt => opt.classList.remove('active'));
+            // Aggiungi active al cliccato
+            event.target.classList.add('active');
+            
+            if (rowId === 'row-cause') data.cause = value;
+            if (rowId === 'row-contact') data.contact = value;
+            if (rowId === 'row-severity') data.severity = value;
+        }
+
+        // Quando preme INVIA su Telegram
+        Telegram.WebApp.onEvent('mainButtonClicked', function(){
+            // Valori di default se non seleziona nulla nei toggle
+            const finalData = {
+                status: data.status,
+                cause: data.cause || "Non specificato",
+                contact: data.contact || "Non specificato",
+                severity: data.severity || "Non specificato"
+            };
+            tg.sendData(JSON.stringify(finalData));
+        });
+
+    </script>
+</body>
+</html>
